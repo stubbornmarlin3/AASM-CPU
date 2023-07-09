@@ -164,6 +164,8 @@ while i < len(parsed_source_code)-1:
                 try:
                     arguments = re.split(r" *, *", parsed_source_code[i])
                     instruction = [instruction[0][arguments[0]] + (instruction[1] if len(arguments) == 3 and arguments[2] == "x" else 0), arguments[1]]
+                    if len(arguments) == 3 and arguments[2] != "x":
+                        instruction.insert(1,f"+{arguments[2]}")
                     rom_address+=2
                 except KeyError:
                     print("Invalid arg")
@@ -190,6 +192,7 @@ while i < len(parsed_source_code)-1:
         data_name, data_value = re.split(r" *= *", parsed_source_code[i])
         data.update({data_name:data_value})
 
+offset = 0
 i = 0
 while i < len(buffer):
     if buffer[i] in data:
@@ -199,16 +202,21 @@ while i < len(buffer):
         buffer[i] = hex(buffer[i])[2:]
 
     match str(buffer[i])[0]:
+        case "+": # Offset for next 2 bytes
+            offset = int(buffer.pop(i)[1:])
+            i-=1
         case "&": # Compiler ROM address
-            db = hex(int(buffer[i][1:]))[2:].zfill(4)
+            db = hex(int(buffer[i][1:]) + offset)[2:].zfill(4)
             buffer[i] = "0" if db[:2] == "00" else db[:2].lstrip("0")
             i+=1
             buffer.insert(i,"0" if db[2:] == "00" else db[2:].lstrip("0"))
+            offset = 0
         case "%": # 2 bytes in hex
-            db = buffer[i][1:].zfill(4)
+            db = hex(int(buffer[i][1:],16) + offset)[2:].zfill(4)
             buffer[i] = "0" if db[:2] == "00" else db[:2].lstrip("0")
             i+=1
             buffer.insert(i,"0" if db[2:] == "00" else db[2:].lstrip("0"))
+            offset = 0
         case "$": # 1 byte in hex
             b = buffer[i][1:]
             buffer[i] = "0" if b == "00" else b.lstrip("0")
