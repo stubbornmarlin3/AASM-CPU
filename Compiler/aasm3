@@ -60,7 +60,6 @@ except FileNotFoundError as e:
     exit(1)
 
 instr = {
-    "_init":0x0,
     "nop":0x2,
     "ldi":{"ar":0x4,"br":0x6,"xr":0x8,"spr":0xA},
     "ldr":[{"ar":0xC,"br":0x14,"xr":0x1C},4],
