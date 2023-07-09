@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+
+VERSION = "\n    Aids Assembly Language Compiler v1.0\n\n        ~ Made by Aidan Carter ~\n"
+
+HELP_MESSAGE = """
+    This is a compiler for assembly language for the Aids CPU v1.0.\n
+    Takes in a '.s' source code file and returns a '.hex' file for Digital Logic Simulator\n\n
+    Options:\n
+    \t-o | --output\t\t\tPath to output the compiled .hex program to\n
+    \t-v | --version\t\t\tVersion info\n
+    \t-h | --help\t\t\tHelp info (This page)\n
+    Usage:\n
+    \tasm {program} -o {output}\n\n
+    "-o" / "--output" is optional and if disregarded the .hex file will be saved to the current folder\n
+    """
+
+import sys
+import re
+
+args = sys.argv[1:]
+
+if "-v" in args or "--version" in args:
+    print(VERSION)
+    exit()
+
+if "-h" in args or "--help" in args or not args:
+    print(HELP_MESSAGE)
+    exit()
+
+inputFile = args[0]
+inputFileName, inputFileExtension = re.split(r"[/\\\.]", inputFile)[-2:]
+
+if inputFileExtension != "s":
+    print(f"Error: Invalid file extension \".{inputFileExtension}\"", file=sys.stderr)
+    exit(1)
+
+if len(args) == 3:
+    if args[1] == "-o" or args[1] == "--output":
+        outputFileExtension = re.split(r"\.", args[2])[-1]
+        if outputFileExtension != "hex":
+            print(f"Error: Invalid file extension \".{outputFileExtension}\"", file=sys.stderr)
+            exit(1)
+        outputFile = args[2]
+    else:
+        print(f"Error: Invalid argument \"{args[1]}\"", file=sys.stderr)
+        exit(1)
+elif len(args) == 1:
+    outputFile = f"{inputFile[:-2]}.hex"
+else:
+    print("Error: Missing arguments", file=sys.stderr)
+    exit(1)
+
+print("Input:", inputFile)
+print("Output:", outputFile)
+
+try:
+    with open(inputFile, "r") as f:
+        source_code = f.readlines()
+
+except FileNotFoundError as e:
+    print(e)
+    exit(1)
+    
+    
+if not source_code or source_code[0] != ";aasm\n":
+    print("Error: Not a valid AASM file", file=sys.stderr)
+    exit(1)
+
+instr = {
+    "nop":"0",
+    "lda":"2",
+    "ldb":"4",
+    "lma":"6",
+    "lmb":"a",
+    "sta":"e",
+    "stb":"12",
+    "add":"16",
+    "addc":"18",
+    "sub":"1a",
+    "subb":"1c",
+    "and":"1e",
+    "or":"20",
+    "xor":"22",
+    "not":"24",
+    "rol":"26",
+    "ror":"28",
+    "cmp":"2a",
+    "push":"2c",
+    "pop":"2e",
+    "jmp":"31",
+    "ret":"36",
+    "bne":"3b",
+    "beq":"3c",
+    "bgt":"3d",
+    "blt":"3e",
+    "bnc":"3f",
+    "brc":"40",
+    "spi":"44",
+    "out":"47",
+}
+
+data = {}
+
+i = 0
+while True: # Parse spacing until first line of data
+    i+=1
+    op = re.findall(r";.*+|\' \'|\S+", source_code[i])
+
+    if not op or op[0][0] == ";":
+        continue
+
+    if op[0] == ".data":
+        break
+
+    if op[0] == ".main":
+        i-=1
+        break
+
+while True:  # .data section parse
+    i+=1
+    op = re.findall(r";.*+|\' \'|\S+", source_code[i])
+
+    if not op or op[0][0] == ";":
+        continue
+    if op[0] == ".main":
+        break
+
+    data.update({op[0]:op[1]})
+
+buffer = []
+labels = {}
+rom_address = 0
+
+while True: # .main section parse
+    
+    i+=1
+    try:
+        op = re.findall(r";.*+|\' \'|\S+", source_code[i])
+        print(op)
+    except IndexError:
+        break
+
+    if not op or op[0][0] == ";":
+        continue
+
+    if op[0] in instr:
+        buffer.append(instr[op[0]])
+        rom_address+=1
+        try:
+            if op[1] in data:
+                arg = data[op[1]]
+            elif op[1] in labels:
+                arg = labels[op[1]]
+            else:
+                arg = op[1]
+        except IndexError:
+            continue
+        
+        match arg[0]:
+            case "%":
+                tmp = arg[1:3].lstrip("0")
+                buffer.append(tmp if tmp else "0")
+                tmp = arg[3:].lstrip("0")
+                buffer.append(tmp if tmp else "0")
+                rom_address+=1
+            case "#":
+                buffer.append(hex(int(arg[1:]))[2:])
+            case "$":
+                tmp = arg[1:].lstrip("0")
+                buffer.append(tmp if tmp else "0")
+            case "'":
+                if arg[2] == "'":
+                    buffer.append(hex(ord(arg[1]))[2:])
+            case other:
+                buffer.append(arg)
+
+        rom_address+=1
+        continue
+
+    if op[0] == "global":
+        buffer.append("31")
+        buffer.append(op[1])
+        rom_address+=2
+        continue
+
+    if op[0][-1] == ":":
+        labels.update({op[0][:-1]:f"%{hex(rom_address)[2:].zfill(4)}"})
+
+for i in range(len(buffer)):
+
+    try:
+        label = labels[buffer[i]]
+        tmp = label[3:].lstrip("0")
+        buffer[i] = tmp if tmp else "0"
+        tmp = label[1:3].lstrip("0")
+        buffer.insert(i, tmp if tmp else "0")
+    except KeyError:
+        pass
+
+with open(outputFile, "w") as f:
+
+    f.write("v2.0 raw\n")
+    f.write("\n".join(buffer))

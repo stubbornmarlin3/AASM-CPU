@@ -1,0 +1,264 @@
+#!/usr/bin/env python3
+
+VERSION = "\n    Aids Assembly Language Compiler v3.0\n\n        ~ Made by Aidan Carter ~\n"
+
+HELP_MESSAGE = """
+    This is a compiler for assembly language for the Aids CPU v3.0.\n
+    Takes in a '.s' source code file and returns a '.hex' file for Digital Logic Simulator\n\n
+    Options:\n
+    \t-o | --output\t\t\tPath to output the compiled .hex program to\n
+    \t-v | --version\t\t\tVersion info\n
+    \t-h | --help\t\t\tHelp info (This page)\n
+    Usage:\n
+    \tasm {program} -o {output}\n\n
+    "-o" / "--output" is optional and if disregarded the .hex file will be saved to the current folder\n
+    """
+
+import sys
+import re
+import ast
+
+args = sys.argv[1:]
+
+if "-V" in args or "--version" in args:
+    print(VERSION)
+    exit()
+
+if "-h" in args or "--help" in args or not args:
+    print(HELP_MESSAGE)
+    exit()
+
+inputFile = args[0]
+inputFileName, inputFileExtension = re.split(r"[/\\\.]", inputFile)[-2:]
+
+if inputFileExtension != "s":
+    print(f"Error: Invalid file extension \".{inputFileExtension}\"", file=sys.stderr)
+    exit(1)
+
+if len(args) > 2:
+    if args[1] == "-o" or args[1] == "--output":
+        outputFileExtension = re.split(r"\.", args[2])[-1]
+        if outputFileExtension != "hex":
+            print(f"Error: Invalid file extension \".{outputFileExtension}\"", file=sys.stderr)
+            exit(1)
+        outputFile = args[2]
+    else:
+        print(f"Error: Invalid argument \"{args[1]}\"", file=sys.stderr)
+        exit(1)
+elif "-o" not in args or "--output" not in args:
+    outputFile = f"{inputFile[:-2]}.hex"
+else:
+    print("Error: Missing arguments", file=sys.stderr)
+    exit(1)
+
+try:
+    with open(inputFile, "r") as f:
+        source_code = f.read()
+
+except FileNotFoundError as e:
+    print(e)
+    exit(1)
+
+instr = {
+    "_init":0x0,
+    "nop":0x2,
+    "ldi":{"ar":0x4,"br":0x6,"xr":0x8,"spr":0xA},
+    "ldr":[{"ar":0xC,"br":0x14,"xr":0x1C},4],
+    "ldm":[{"ar":0x24,"br":0x2A,"xr":0x30},3],
+    "in":{"ar":0x36,"br":0x38,"xr":0x3A},
+    "out":{"ar":0x3C,"br":0x3E,"xr":0x40},
+    "str":[{"ar":0x42,"br":0x48,"xr":0x4E},3],
+    "mov":{"ar":{"br":0x54,"xr":0x55},"br":{"ar":0x56,"xr":0x57},"xr":{"ar":0x58,"br":0x59}},
+    "push":{"ar":0x5A,"br":0x5B,"xr":0x5C},
+    "pop":{"ar":0x5D,"br":0x5F,"xr":0x61},
+    "inx":0x63,
+    "add":0x64,
+    "addc":0x65,
+    "sub":0x66,
+    "subb":0x67,
+    "mul":0x68,
+    "div":0x69,
+    "mod":0x6A,
+    "and":0x6B,
+    "or":0x6C,
+    "not":0x6D,
+    "xor":0x6E,
+    "shr":0x6F,
+    "shl":0x70,
+    "inc":0x71,
+    "dec":0x72,
+    "bit":0x73,
+    "cmp":0x74,
+    "jmp":0x75,
+    "jeq":0x78,
+    "jz":0x78,
+    "jne":0x79,
+    "jnz":0x79,
+    "jgt":0x7A,
+    "jpos":0x7A,
+    "jlt":0x7B,
+    "jneg":0x7B,
+    "call":0x7E,
+    "ret":0x83,
+    "int":0x88,
+    "rti":0x8C,
+    "dsi":0x91,
+    "eni":0x94,
+    "hlt":0x98,
+}
+
+parsed_source_code = re.findall(r";.*+|\'.?\'|\".*\"|\S+:|\S+,.+|\S+ *= *\S+|\S+,.+,.+|\S+", source_code)
+
+if not parsed_source_code or parsed_source_code[0] != ";aasm":
+    print("Invalid AASM file!")
+    exit(1)
+
+data = {}
+buffer = []
+
+section = None
+i = 0
+rom_address = 0
+
+while i < len(parsed_source_code)-1:
+
+    i+=1
+    if parsed_source_code[i][0] == ";":
+        continue
+
+    match parsed_source_code[i]:
+        case ".data":
+            section = "data"
+            continue
+        case ".body":
+            section = "body"
+            continue
+        case ".org":
+            print("Unused for now!")
+            exit(1)
+        case other:
+            pass
+    
+    if section == "body":
+        
+        try:
+            instruction = instr[parsed_source_code[i]]
+
+            if type(instruction) == dict: # ldi, in, out, mov, push, pop
+                i+=1
+                try:
+                    arguments = re.split(r" *, *", parsed_source_code[i])
+                    instruction = instruction[arguments[0]]
+                    if type(instruction) == dict: # mov
+                        instruction = instruction[arguments[1]]
+                        raise Exception
+                    instruction = [instruction, arguments[1]]
+                    rom_address+=1
+                except KeyError:
+                    print("Invalid arg")
+                    exit(1)
+                except:
+                    pass
+
+            elif type(instruction) == list: # ldm, ldr, str
+                i+=1
+                try:
+                    arguments = re.split(r" *, *", parsed_source_code[i])
+                    instruction = [instruction[0][arguments[0]] + (instruction[1] if len(arguments) == 3 and arguments[2] == "x" else 0), arguments[1]]
+                    rom_address+=2
+                except KeyError:
+                    print("Invalid arg")
+                    exit(1)
+            try:
+                buffer.extend(instruction)
+            except:
+                buffer.append(instruction)
+
+            rom_address+=1
+
+        except KeyError:
+
+            if parsed_source_code[i][-1] == ":":
+                data.update({parsed_source_code[i][:-1]:f"&{rom_address}"})
+                continue
+            
+            buffer.append(parsed_source_code[i])
+            rom_address+=2
+        
+
+    elif section == "data":
+        
+        data_name, data_value = re.split(r" *= *", parsed_source_code[i])
+        data.update({data_name:data_value})
+
+i = 0
+while i < len(buffer):
+    if buffer[i] in data:
+        buffer[i] = data[buffer[i]]
+
+    if type(buffer[i]) == int:
+        buffer[i] = hex(buffer[i])[2:]
+
+    match str(buffer[i])[0]:
+        case "&": # Compiler ROM address
+            db = hex(int(buffer[i][1:]))[2:].zfill(4)
+            buffer[i] = "0" if db[:2] == "00" else db[:2].lstrip("0")
+            i+=1
+            buffer.insert(i,"0" if db[2:] == "00" else db[2:].lstrip("0"))
+        case "%": # 2 bytes in hex
+            db = buffer[i][1:].zfill(4)
+            buffer[i] = "0" if db[:2] == "00" else db[:2].lstrip("0")
+            i+=1
+            buffer.insert(i,"0" if db[2:] == "00" else db[2:].lstrip("0"))
+        case "$": # 1 byte in hex
+            b = buffer[i][1:]
+            buffer[i] = "0" if b == "00" else b.lstrip("0")
+        case '\"': # Start of string
+            string = buffer.pop(i)[1:-1]
+            j = 0
+            while j < len(string):
+                if string[j] == "\\":
+                    char = string[j]+string[j+1]
+                    j+=1
+                else:
+                    char = string[j]
+
+                buffer.insert(i,hex(ord(ast.literal_eval('"{}"'.format(char))))[2:])
+                j+=1
+                i+=1
+            i-=1
+        case "\'": # Also string
+            string = buffer.pop(i)[1:-1]
+            j = 0
+            while j < len(string):
+                if string[j] == "\\":
+                    char = string[j]+string[j+1]
+                    j+=1
+                else:
+                    char = string[j]
+
+                buffer.insert(i,hex(ord(ast.literal_eval('"{}"'.format(char))))[2:])
+                j+=1
+                i+=1
+            i-=1
+    i+=1
+
+with open(outputFile, "w") as f:
+
+    f.write("v2.0 raw\n")
+    f.write("\n".join(buffer))
+
+if "-v" in args or "--verbose" in args:
+    print("\nINPUT:", inputFile)
+    print("\nOUTPUT:", outputFile)
+    largest = 0
+    for key in data.keys():
+        largest = largest if len(key) < largest else len(key)
+    print("\nCONSTANTS\n")
+    for key,value in data.items():
+        print(f"{key:{largest+1}} ->   {value}")
+
+    print("\nCOMPILED CODE\n")
+    for i in range(len(buffer)):
+        print(f"{hex(i)[2:].zfill(4)}:   {buffer[i]}")
+    print()
