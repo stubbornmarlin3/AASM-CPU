@@ -31,7 +31,7 @@ if "-h" in args or "--help" in args or not args:
 inputFile = args[0]
 inputFileName, inputFileExtension = re.split(r"[/\\\.]", inputFile)[-2:]
 
-if inputFileExtension != "s":
+if inputFileExtension != "aasm":
     print(f"Error: Invalid file extension \".{inputFileExtension}\"", file=sys.stderr)
     exit(1)
 

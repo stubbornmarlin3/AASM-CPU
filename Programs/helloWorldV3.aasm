@@ -1,5 +1,8 @@
 ;aasm
 
+.data 
+    term = $0f
+
 .body
 
 _init: main
@@ -12,7 +15,7 @@ main:
     jmp loop
 
 print:
-    out ar, $0f
+    out ar, term
     nop
     nop
     inx

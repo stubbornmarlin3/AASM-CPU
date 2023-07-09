@@ -1,0 +1,71 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "AASM",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#sections"
+		},
+		{
+			"include": "#labels"
+		},
+		{
+			"include": "#instructions"
+		},
+		{
+			"include": "#double_strings"
+		},
+		{
+			"include": "#single_strings"
+		}
+	],
+	"repository": {
+		"comments": {
+			"name": "comment.line.aasm",
+			"match": ";.*"
+		},
+		"sections": {
+			"patterns": [{
+				"name": "constant.language.aasm",
+				"match": "(.data|.body)"
+			}]
+		},
+		"labels": {
+			"patterns": [{
+				"name": "variable.language.aasm",
+				"match": ".+:"
+			}]
+		},
+		"instructions": {
+			"patterns": [{
+				"name": "keyword.control.aasm",
+				"match": "\\b(nop|ldi|ldr|ldm|in|out|str|mov|push|pop|inx|add|addc|sub|subb|mul|div|mod|and|or|not|xor|shr|shl|inc|dec|bit|cmp|jmp|jeq|jz|jne|jnz|jgt|jpos|jlt|jneg|call|ret|int|rti|dsi|eni|hlt)\\b"
+			}]
+		},
+		"double_strings": {
+			"name": "string.quoted.double.aasm",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.aasm",
+					"match": "\\\\."
+				}
+			]
+		},
+		"single_strings": {
+			"name": "string.quoted.single.aasm",
+			"begin": "'",
+			"end": "'",
+			"patterns": [
+				{
+					"name": "constant.character.escape.aasm",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.aasm"
+}

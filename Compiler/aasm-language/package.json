@@ -1,0 +1,25 @@
+{
+  "name": "aasm-language",
+  "displayName": "Aid's Assembly Language",
+  "description": "Aid's Assembly Language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "aasm",
+      "aliases": ["AASM", "aasm"],
+      "extensions": [".aasm"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "aasm",
+      "scopeName": "source.aasm",
+      "path": "./syntaxes/aasm.tmLanguage.json"
+    }]
+  }
+}
