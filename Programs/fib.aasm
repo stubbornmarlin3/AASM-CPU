@@ -2,12 +2,21 @@
 
 .data
 
+    ascii_numbers = %0100
+    tmp = %fffe
     prev = %ffff
     term = $f
 
 .body
 
 _init: main
+
+interrupt:
+
+    rti
+
+wait:
+    hlt
 
 main:
 
@@ -16,12 +25,49 @@ main:
 
 print:
 
+    push br
+    push ar
+    ldi xr, 0
+
+convert_to_ascii:
+
+    str ar, tmp
+    ldi br, 10
+    mod                             ; Calc d = x mod 10
+    str ar, ascii_numbers, x        ; Store d
+    inx
+    ldm ar, tmp
+    div                             ; Calc x = x div 10
+    jnz convert_to_ascii            ; Loop until x == 0
+
+    ldi br, 48
+    mov xr, ar              ; To decrement X since X can't decrement by itself
+print_continued:
+
+    ; Decrement X
+    dec
+    mov ar, xr
+
+    ldm ar, ascii_numbers, x
+    add
     out ar, term
 
-loop:
+    mov xr, ar
+    bit                     ; Bit test on what was in index
+    jnz print_continued     ; Loop until 0
 
+    ldi ar, '\n'
+    out ar, term            ; Print newline
+
+    pop ar
+    ldi br, 127
+    cmp
+    jneg wait
+    pop br
+
+calc_fib:
+
+    str ar, prev
     add
-    
-
-
-    
+    ldm br, prev
+    jmp print

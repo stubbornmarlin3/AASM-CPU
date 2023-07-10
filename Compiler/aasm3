@@ -106,7 +106,7 @@ instr = {
     "hlt":0x98,
 }
 
-parsed_source_code = re.findall(r";.*+|\'.?\'|\".*\"|\S+:|\S+,.+|\S+ *= *\S+|\S+,.+,.+|\S+", source_code)
+parsed_source_code = re.findall(r";.*|\'.*\'|\".*\"|[a-zA-Z0-9_\-]+:|[abxr]{2} *, *[a-zA-Z0-9_\-%$]+ *, *[0-9x\-]{1,4}|[abxspr]{2,3} *, *[a-zA-Z0-9_\-%$]+|[a-zA-Z0-9_\-]+ *= *[a-f0-9%$]{1,5}|[a-zA-Z0-9_\-.]+", source_code)
 
 if not parsed_source_code or parsed_source_code[0] != ";aasm":
     print("Invalid AASM file!")
@@ -118,6 +118,9 @@ buffer = []
 section = None
 i = 0
 rom_address = 0
+
+if "-v" in args or "--verbose" in args:
+    print(parsed_source_code)
 
 while i < len(parsed_source_code)-1:
 
@@ -151,10 +154,14 @@ while i < len(parsed_source_code)-1:
                     if type(instruction) == dict: # mov
                         instruction = instruction[arguments[1]]
                         raise Exception
+                    try:
+                        arguments[1] = int(arguments[1])
+                    except:
+                        pass
                     instruction = [instruction, arguments[1]]
                     rom_address+=1
-                except KeyError:
-                    print("Invalid arg")
+                except KeyError as e:
+                    print("Invalid arg", e)
                     exit(1)
                 except:
                     pass
@@ -167,8 +174,8 @@ while i < len(parsed_source_code)-1:
                     if len(arguments) == 3 and arguments[2] != "x":
                         instruction.insert(1,f"+{arguments[2]}")
                     rom_address+=2
-                except KeyError:
-                    print("Invalid arg")
+                except KeyError as e:
+                    print("Invalid arg", e)
                     exit(1)
             try:
                 buffer.extend(instruction)
@@ -195,6 +202,7 @@ while i < len(parsed_source_code)-1:
 offset = 0
 i = 0
 while i < len(buffer):
+
     if buffer[i] in data:
         buffer[i] = data[buffer[i]]
 
