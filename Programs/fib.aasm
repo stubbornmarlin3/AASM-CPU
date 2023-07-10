@@ -1,0 +1,27 @@
+;aasm
+
+.data
+
+    prev = %ffff
+    term = $f
+
+.body
+
+_init: main
+
+main:
+
+    ldi ar, 0
+    ldi br, 1
+
+print:
+
+    out ar, term
+
+loop:
+
+    add
+    
+
+
+    

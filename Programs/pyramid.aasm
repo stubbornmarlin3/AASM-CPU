@@ -1,0 +1,47 @@
+;aasm
+
+.data
+
+    term = $0f
+
+.body
+
+_init: main
+
+int:
+    push xr
+    push ar
+    ldi xr, 0
+
+print_loop:
+    ldr ar, message, x
+    bit
+    jz end_int
+    out ar, term
+    inx
+    jmp print_loop
+
+end_int:
+    pop ar
+    inc
+    pop xr
+    rti
+
+main:
+    ldi xr, 1
+
+count:
+    mov xr, ar
+    ldi br, '*'
+count_loop:
+    out br, term
+    dec
+    bit
+    jnz count_loop
+    
+    ldi br, "\n"
+    out br, term
+    inx
+    jmp count
+
+message: "Clay is a bitch"

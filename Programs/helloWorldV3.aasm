@@ -10,8 +10,9 @@ _init: main
 int:
     rti
 
+
 main:
-    ldi xr,0
+    ldi xr, 0
     jmp loop
 
 print:
@@ -29,7 +30,7 @@ loop:
     jmp main
 
 message:
-    "Hello, world!\nMy name is Aidan Carter.\n"
+    "Hello world!\nMy name is Aidan Carter.\n"
 
 ; Expected output
 ; v2.0 raw

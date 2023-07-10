@@ -19,7 +19,17 @@
 		},
 		{
 			"include": "#single_strings"
+		},
+		{
+			"include": "#registers"
+		},
+		{
+			"include": "#values"
+		},
+		{
+			"include": "#assignment"
 		}
+
 	],
 	"repository": {
 		"comments": {
@@ -28,7 +38,7 @@
 		},
 		"sections": {
 			"patterns": [{
-				"name": "constant.language.aasm",
+				"name": "keyword.control.aasm",
 				"match": "(.data|.body)"
 			}]
 		},
@@ -40,8 +50,25 @@
 		},
 		"instructions": {
 			"patterns": [{
-				"name": "keyword.control.aasm",
+				"name": "entity.name.function.aasm",
 				"match": "\\b(nop|ldi|ldr|ldm|in|out|str|mov|push|pop|inx|add|addc|sub|subb|mul|div|mod|and|or|not|xor|shr|shl|inc|dec|bit|cmp|jmp|jeq|jz|jne|jnz|jgt|jpos|jlt|jneg|call|ret|int|rti|dsi|eni|hlt)\\b"
+			}]
+		},
+		"assignment" : {
+			"name": "keyword.operator.aasm",
+			"match": " *= *"
+		},
+		"registers": {
+			"name": "constant.language.aasm",
+			"match": "\\b(ar|br|xr|spr)\\b"
+		},
+		"values": {
+			"name": "storage.type.aasm",
+			"begin": "\\$|%",
+			"end": "\\s|,",
+			"patterns": [{
+				"name": "constant.numeric.aasm",
+				"match": "[0-9a-f]{1,4}"
 			}]
 		},
 		"double_strings": {
