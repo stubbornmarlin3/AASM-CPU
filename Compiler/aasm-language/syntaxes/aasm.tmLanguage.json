@@ -6,6 +6,12 @@
 			"include": "#comments"
 		},
 		{
+			"include": "#double_strings"
+		},
+		{
+			"include": "#single_strings"
+		},
+		{
 			"include": "#sections"
 		},
 		{
@@ -13,12 +19,6 @@
 		},
 		{
 			"include": "#instructions"
-		},
-		{
-			"include": "#double_strings"
-		},
-		{
-			"include": "#single_strings"
 		},
 		{
 			"include": "#registers"
@@ -45,7 +45,7 @@
 		"labels": {
 			"patterns": [{
 				"name": "variable.language.aasm",
-				"match": ".+:"
+				"match": "[a-zA-Z_-]+:"
 			}]
 		},
 		"instructions": {

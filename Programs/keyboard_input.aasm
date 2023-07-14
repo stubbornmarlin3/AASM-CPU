@@ -1,0 +1,87 @@
+;aasm
+
+.data
+
+    keyboard = $e
+    term = $f
+    input_buffer = %0101
+    input_buffer_index = %0100
+
+.body
+
+_init: main
+
+interrupt:      ; This happens when there is characters in the keyboard buffer
+
+    push ar
+    push xr
+
+    ldm xr, input_buffer_index
+    in ar, keyboard
+    str ar, input_buffer, x
+    inx
+    str xr, input_buffer_index
+
+    pop xr
+    pop ar
+    rti
+    
+
+main:
+
+    ldi xr, 0
+    str xr, input_buffer_index
+
+print_input:
+
+    ldr ar, input_message, x
+    out ar, term
+    inx
+    bit
+    jnz print_input
+
+wait_for_input:
+
+    ldm ar, input_buffer_index
+    dec
+    mov ar, xr
+    ldm ar, input_buffer, x
+    ldi br, '\n'
+    cmp
+    jne wait_for_input
+
+    ldi xr, 0
+print_output_begin:
+
+    ldr ar, output_message_begin, x
+    out ar, term
+    inx
+    bit
+    jnz print_output_begin
+
+    ldi xr, 0
+    ldi br, '\n'
+    ldm ar, input_buffer, x
+print_name:
+
+    out ar, term
+    inx
+    ldm ar, input_buffer, x
+    cmp
+    jne print_name
+
+    ldi xr, 0
+print_output_end:
+
+    ldr ar, output_message_end, x
+    out ar, term
+    inx
+    bit
+    jnz print_output_end
+
+
+input_message: "Please enter your name:\n"
+
+output_message_begin: "Hello, "
+
+output_message_end: "!\n"

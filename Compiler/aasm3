@@ -189,9 +189,17 @@ while i < len(parsed_source_code)-1:
             if parsed_source_code[i][-1] == ":":
                 data.update({parsed_source_code[i][:-1]:f"&{rom_address}"})
                 continue
-            
+
+            if (parsed_source_code[i][0] == '\"' and parsed_source_code[i][-1] == '\"') or (parsed_source_code[i][0] == "\'" and parsed_source_code[i][-1] == "\'"):
+                string = parsed_source_code[i]
+                for char in string:
+                    if char == "\\":
+                        continue
+                    rom_address+=1
+                rom_address-=(1 if parsed_source_code[i][0] == '\"' else 2)
+            else:
+                rom_address+=2
             buffer.append(parsed_source_code[i])
-            rom_address+=2
         
 
     elif section == "data":
@@ -241,8 +249,9 @@ while i < len(buffer):
                 buffer.insert(i,hex(ord(ast.literal_eval('"{}"'.format(char))))[2:])
                 j+=1
                 i+=1
+            buffer.insert(i,"0")
             i-=1
-        case "\'": # Also string
+        case "\'": # For characters
             string = buffer.pop(i)[1:-1]
             j = 0
             while j < len(string):
@@ -275,5 +284,5 @@ if "-v" in args or "--verbose" in args:
 
     print("\nCOMPILED CODE\n")
     for i in range(len(buffer)):
-        print(f"{hex(i)[2:].zfill(4)}:   {buffer[i]}")
+        print(f"{i:<8}: {hex(i)[2:].zfill(4)}    {buffer[i]}")
     print()
