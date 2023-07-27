@@ -1,0 +1,69 @@
+;aasm
+
+    jmp init
+
+int:
+
+    push ax
+    push si
+
+    ldi si,int_message
+int_loop:
+
+    ldr ax,si
+    out ax
+    inc si
+    bit ax
+    jnz int_loop
+
+    pop si
+    pop ax
+    iret
+
+int_message: "INT"
+
+init:
+
+    ldi ax,#0       ;Load ax with 0
+    ldi bx,#1       ;Load bx with 1
+
+    ldi cx,#10      ;Load cx with 10 (for ascii conversion)
+    ldi ex,$8000    ;Load ex with address to store numbers
+    mov fx,ex
+    ldi gx,$30
+
+convert_to_ascii:
+
+    mov dx,ax       ;Copy ax to dx
+
+loop:
+
+    rdiv dx,cx      ;Divide dx by 10, dx is quotient, tx is remainder
+    pushf
+    str ex,tx       ;Store tx at address in ex
+    inc ex
+    popf
+    jnz loop    ;Loop until dx == 0
+
+print:
+
+    dec ex
+    ldr dx,ex       ;Get number in reverse order
+    add dx,gx
+    out dx          ;Print
+    cmp fx,ex
+    jne print
+
+    ldi dx,'\n'     ;Print newline
+    out dx
+
+next_fib:
+
+    mov hx,ax
+    add ax,bx
+    mov bx,hx
+    jnc convert_to_ascii
+
+    hlt
+
+

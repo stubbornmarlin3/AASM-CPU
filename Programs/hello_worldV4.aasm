@@ -1,0 +1,26 @@
+;aasm
+
+var=$f000
+var2=%00101
+var3=#3
+
+    jmp main ;Where the program starts
+
+int:
+    iret
+
+main:
+    ; ldi ax,start
+    ldi si,message
+    ldr ax,si
+
+print:
+    out ax
+    inc si
+    ldr ax,si
+    bit ax
+    jnz print
+
+    hlt
+
+message: "Hello, world!"

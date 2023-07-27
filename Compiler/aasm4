@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+
+VERSION = "\n    Aids Assembly Language Compiler v4.0\n\n        ~ Made by Aidan Carter ~\n"
+
+HELP_MESSAGE = """
+    This is a compiler for assembly language for the Aids CPU v4.0.\n
+    Takes in a '.aasm' source code file and returns a '.hex' file for Digital Logic Simulator\n\n
+    Options:\n
+    \t-o | --output\t\t\tPath to output the compiled .hex program to\n
+    \t-v | --version\t\t\tVersion info\n
+    \t-h | --help\t\t\tHelp info (This page)\n
+    Usage:\n
+    \tasm {program} -o {output}\n\n
+    "-o" / "--output" is optional and if disregarded the .hex file will be saved to the current folder\n
+    """
+
+import sys
+import re
+import ast
+
+args = sys.argv[1:]
+
+if "-V" in args or "--version" in args:
+    print(VERSION)
+    exit()
+
+if "-h" in args or "--help" in args or not args:
+    print(HELP_MESSAGE)
+    exit()
+
+inputFile = args[0]
+inputFileName, inputFileExtension = re.split(r"[/\\\.]", inputFile)[-2:]
+
+if inputFileExtension != "aasm":
+    print(f"Error: Invalid file extension \".{inputFileExtension}\"", file=sys.stderr)
+    exit(1)
+
+if len(args) > 2:
+    if args[1] == "-o" or args[1] == "--output":
+        outputFileExtension = re.split(r"\.", args[2])[-1]
+        if outputFileExtension != "hex":
+            print(f"Error: Invalid file extension \".{outputFileExtension}\"", file=sys.stderr)
+            exit(1)
+        outputFile = args[2]
+    else:
+        print(f"Error: Invalid argument \"{args[1]}\"", file=sys.stderr)
+        exit(1)
+elif "-o" not in args or "--output" not in args:
+    outputFile = f"{inputFile[:-5]}.hex"
+else:
+    print("Error: Missing arguments", file=sys.stderr)
+    exit(1)
+
+try:
+    with open(inputFile, "r") as f:
+        source_code = f.read()
+
+except FileNotFoundError as e:
+    print(e)
+    exit(1)
+
+instructions = {
+    "nop":0x0,
+    "ldi":0x100,
+    "mov":0x200,
+    "str":0x300,
+    "ldr":0x400,
+    "push":0x500,
+    "pushf":0x600,
+    "pop":0x700,
+    "popf":0x800,
+    "add":0x900,
+    "addc":0xA00,
+    "sub":0xB00,
+    "subb":0xC00,
+    "mul":0xD00,
+    "div":0xE00,
+    "mod":0xF00,
+    "rdiv":0x1000,
+    "and":0x1100,
+    "or":0x1200,
+    "xor":0x1300,
+    "shl":0x1400,
+    "shr":0x1500,
+    "cmp":0x1600,
+    "bit":0x1700,
+    "inc":0x1800,
+    "dec":0x1900,
+    "neg":0x1A00,
+    "jmp":0x1B00,
+    "jz":0x1C04,
+    "jeq":0x1C04,
+    "jnz":0x1C05,
+    "jne":0x1C05,
+    "js":0x1C02,
+    "jlt":0x1C02,
+    "jns":0x1C03,
+    "jgt":0x1C03,
+    "jc":0x1C00,
+    "jnc":0x1C01,
+    "jv":0x1C06,
+    "jnv":0x1C07,
+    "call":0x1E00,
+    "ret":0x1F00,
+    "tei":0x2000,
+    "int":0x2100,
+    "iret":0x2200,
+    "out":0x2300,
+    "in":0x2400,
+    "hlt":0x2500,
+}
+
+registers = {
+    "sp":0x0,
+    "bp":0x1,
+    "si":0x2,
+    "di":0x3,
+    "ax":0x4,
+    "bx":0x5,
+    "cx":0x6,
+    "dx":0x7,
+    "ex":0x8,
+    "fx":0x9,
+    "gx":0xA,
+    "hx":0xB,
+    "ix":0xC,
+    "jx":0xD,
+    "kx":0xE,
+    "tx":0xF,
+}
+
+parsed_source_code = re.findall(r";.*|\'.*\'|\".*\"|[a-zA-Z_][a-zA-Z0-9_\-]*=[%$#][0-9a-f]+|[a-zA-Z0-9_\-]+:|\.[a-z]{4}|[a-z]{3,5} [abcdefghijktspx]{2},[a-zA-Z0-9_\-#$%]+|[a-z]{2,5} [a-zA-Z0-9_\-]+|[a-z]{2,5}", source_code)
+
+print(parsed_source_code)
+
+if not parsed_source_code or parsed_source_code[0] != ";aasm":
+    print("Invalid AASM file!")
+    exit(1)
+
+buffer = []
+data = {}
+labels = {}
+rom_addr = 0
+
+for item in parsed_source_code:
+    if item.split(" ")[0] in instructions:
+        instr = instructions[item.split(" ")[0]]
+        try:
+            regs = item.split(" ")[1].split(",")
+            reg1 = registers[regs[0]]
+            instr += (reg1 << 4) + (0 if instr == 0x700 or instr == 0x800 else reg1)
+            reg2 = registers[regs[1]]
+            instr += reg2 - reg1
+            buffer.append(hex(instr))
+            rom_addr+=1
+        except KeyError as e:
+            try:
+                var = data[str(e).strip("'")]
+            except:
+                var = str(e).strip("'")
+                if var[0] == "$":
+                    var = "0x" + var[1:]
+                elif var[0] == "%":
+                    var = hex(int(var[1:],base=2))
+                elif var[0] == "#":
+                    var = hex(int(var[1:]))
+
+            buffer.append(hex(instr))
+            buffer.append(var)
+            rom_addr+=2
+        except IndexError:
+            buffer.append(hex(instr))
+            rom_addr+=1
+            pass
+        continue
+
+    if item[0] == "\"":
+        for char in item[1:-1]:
+            buffer.append(hex(ord(char)))
+            rom_addr+=1
+        buffer.append(hex(0))
+        rom_addr+=1
+        continue
+    
+    if item[0] == "\'":
+        buffer.append(hex(ord(ast.literal_eval('"{}"'.format(item[1:-1])))))
+        rom_addr+=1
+        continue
+
+    if item[-1] == ":":
+        labels.update({item[:-1]:hex(rom_addr)})
+        continue
+
+    if item[0] == ";":
+        continue
+    
+    if "=" in item:
+        variable, value = item.split("=")
+        if value[0] == "$":
+            value = "0x" + value[1:]
+        elif value[0] == "%":
+            value = hex(int(value[1:],base=2))
+        else:
+            value = hex(int(value[1:]))
+        data.update({variable:value})
+        continue
+        
+print(buffer)
+print(data)
+print(labels)
+
+for i in range(len(buffer)):
+    if buffer[i] in labels:
+        buffer[i] = labels[buffer[i]]
+    buffer[i] = buffer[i][2:]
+
+print(buffer)
+
+with open(outputFile, "w") as f:
+    f.write("v2.0 raw\n")
+    f.write("\n".join(buffer))

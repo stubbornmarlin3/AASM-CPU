@@ -1,0 +1,98 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "AASM",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#double_strings"
+		},
+		{
+			"include": "#single_strings"
+		},
+		{
+			"include": "#sections"
+		},
+		{
+			"include": "#labels"
+		},
+		{
+			"include": "#instructions"
+		},
+		{
+			"include": "#registers"
+		},
+		{
+			"include": "#values"
+		},
+		{
+			"include": "#assignment"
+		}
+
+	],
+	"repository": {
+		"comments": {
+			"name": "comment.line.aasm",
+			"match": ";.*"
+		},
+		"sections": {
+			"patterns": [{
+				"name": "keyword.control.aasm",
+				"match": "(.data|.body)"
+			}]
+		},
+		"labels": {
+			"patterns": [{
+				"name": "variable.language.aasm",
+				"match": "[a-zA-Z_-]+:"
+			}]
+		},
+		"instructions": {
+			"patterns": [{
+				"name": "entity.name.function.aasm",
+				"match": "\\b(nop|ldi|mov|str|ldr|push|pushf|pop|popf|add|addc|sub|subb|mul|div|mod|rdiv|and|or|xor|shl|shr|cmp|bit|inc|dec|neg|jmp|jz|jeq|jnz|jne|js|jlt|jns|jgt|jc|jnc|jv|jnv|call|ret|tei|int|iret|out|in|hlt)\\b"
+			}]
+		},
+		"assignment" : {
+			"name": "keyword.operator.aasm",
+			"match": " *= *"
+		},
+		"registers": {
+			"name": "constant.language.aasm",
+			"match": "\\b(sp|bp|si|di|ax|bx|cx|dx|ex|fx|gx|hx|ix|jx|kx|tx)\\b"
+		},
+		"values": {
+			"name": "storage.type.aasm",
+			"begin": "\\$|%|#",
+			"end": "\\s|,",
+			"patterns": [{
+				"name": "constant.numeric.aasm",
+				"match": "[0-9a-f]+"
+			}]
+		},
+		"double_strings": {
+			"name": "string.quoted.double.aasm",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.aasm",
+					"match": "\\\\."
+				}
+			]
+		},
+		"single_strings": {
+			"name": "string.quoted.single.aasm",
+			"begin": "'",
+			"end": "'",
+			"patterns": [
+				{
+					"name": "constant.character.escape.aasm",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.aasm"
+}

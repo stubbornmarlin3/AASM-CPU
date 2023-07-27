@@ -4,7 +4,7 @@ VERSION = "\n    Aids Assembly Language Compiler v3.0\n\n        ~ Made by Aidan
 
 HELP_MESSAGE = """
     This is a compiler for assembly language for the Aids CPU v3.0.\n
-    Takes in a '.s' source code file and returns a '.hex' file for Digital Logic Simulator\n\n
+    Takes in a '.aasm' source code file and returns a '.hex' file for Digital Logic Simulator\n\n
     Options:\n
     \t-o | --output\t\t\tPath to output the compiled .hex program to\n
     \t-v | --version\t\t\tVersion info\n
