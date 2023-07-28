@@ -54,6 +54,8 @@ print:
     cmp fx,ex
     jne print
 
+    ldi dx,'\r'     ;Print carriage return
+    out dx
     ldi dx,'\n'     ;Print newline
     out dx
 

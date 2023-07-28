@@ -1,0 +1,104 @@
+;aasm
+    jmp init
+int:
+    in ex
+backspace:
+    ldi tx,$7f
+    cmp ex,tx
+    jne enter
+    ldi ex,'\b'
+    ldi tx,' '
+    out ex
+    out tx
+    jmp print
+enter:
+    ldi tx,'\r'
+    cmp ex,tx
+    jne clear_screen
+    out ex
+    ldi ex,'\n'
+    jmp print
+clear_screen:
+    ldi tx,$c
+    cmp ex,tx
+    jne print
+    ldi ax,CSI_CLEAR_SCREEN
+    push ax
+    call print_escape
+    ldi ax,CSI_CLEAR_SCROLLBACK
+    push ax
+    call print_escape
+    ldi ax,CSI_HOME
+    push ax
+    call print_escape
+    ldi ax,#3
+    add sp,ax
+    iret
+
+CSI_CLEAR_SCROLLBACK: "[3J"
+CSI_CLEAR_SCREEN: "[2J"
+CSI_HOME: "[0;0H"
+
+print:
+    out ex
+    iret
+
+STARTUP_TEXT: "ECHO PROGRAM v1.0"
+
+init:
+    ldi si,STARTUP_TEXT
+    ldr ax,si
+start_loop:
+    out ax
+    inc si
+    ldr ax,si
+    bit ax
+    jnz start_loop
+
+    ldi si,$ffff
+sleep_loop:
+    dec si
+    nop
+    jnz sleep_loop
+
+    ldi tx,wait
+    dec tx
+    push tx
+    pushf
+    ldi ex,$c
+    jmp clear_screen
+
+    tei
+wait:
+    hlt
+    jmp wait
+
+print_escape:
+
+    push bp         ;Preamble
+    mov bp,sp       ;bp = sp
+    push ax
+    push bx
+
+    mov bx,bp       ;Get argument (which should be the address of the escape code)
+    ldi ax,#2
+    add bx,ax       ;bx = bx + 2
+    ldr bx,bx       ;Get from memory the address to the string, which is at bp + 2
+
+    ldi ax,$1b      ;Print ESC
+    out ax
+    ldr ax,bx       ;Load first character
+print_escape_loop:
+    out ax
+    inc bx
+    ldr ax,bx
+    bit ax
+    jnz print_escape_loop   ;Loop until end of string
+
+    pop bx
+    pop ax
+    mov sp,bp
+    pop bp
+    ret
+
+

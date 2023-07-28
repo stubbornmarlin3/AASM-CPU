@@ -175,7 +175,7 @@ for item in parsed_source_code:
         continue
 
     if item[0] == "\"":
-        for char in item[1:-1]:
+        for char in ast.literal_eval('"{}"'.format(item[1:-1])):
             buffer.append(hex(ord(char)))
             rom_addr+=1
         buffer.append(hex(0))

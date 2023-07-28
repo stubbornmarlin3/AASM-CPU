@@ -1,0 +1,126 @@
+;aasm
+
+keyboard_buffer_end_pointer=$8000
+keyboard_buffer_pointer=$8001
+keyboard_buffer=$8002
+keyboard_buffer_end=$8100
+ESC=$1b
+
+jmp init
+
+terminal_interrupt:      ;Get the character from the terminal and add to buffer
+
+    push bp
+    mov bp,sp
+
+    push ex
+    push ix
+    push jx
+    push kx
+
+    in ex
+
+    ldi ix,keyboard_buffer_end_pointer          ;get the end pointer
+    ldr ix,ix
+
+    ldi jx,keyboard_buffer
+
+    add jx,ix                                   ;jx is the keyboard buffer + keyboard buffer end pointer
+    inc ix                                      ;increment end pointer
+    ldi kx,keyboard_buffer_end
+    cmp jx,kx
+    jne store_terminal_input                    ;if at the end of the buffer, set jx back to begining of the queue
+    ldi jx,keyboard_buffer
+    ldi ix,#1
+
+store_terminal_input:
+    str jx,ex           ;Store terminal input in keyboard buffer
+    ldi kx,keyboard_buffer_end_pointer
+    str kx,ix           ;Store end pointer 
+
+    pop kx
+    pop jx
+    pop ix
+    pop ex
+
+    mov sp
+    pop bp
+
+    iret
+
+CSI_CLEAR_SCROLLBACK: "[3J"
+CSI_CLEAR_SCREEN: "[2J"
+CSI_HOME: "[0;0H"
+
+terminal_escape_sequence:
+
+    push bp         ;Preamble
+    mov bp,sp       ;bp = sp
+    push ax
+    push bx
+
+    mov bx,bp       ;Get argument (which should be the address of the escape code)
+    ldi ax,#2
+    add bx,ax       ;bx = bx + 2
+    ldr bx,bx       ;Get from memory the address to the string, which is at bp + 2
+
+    ldi ax,ESC      ;Print ESC
+    out ax
+    ldr ax,bx       ;Load first character
+
+terminal_escape_loop:
+    out ax
+    inc bx
+    ldr ax,bx
+    bit ax
+    jnz terminal_escape_loop   ;Loop until end of string
+
+    pop bx          ;Restore state before function call
+    pop ax
+    mov sp,bp
+    pop bp
+    ret
+
+echo_character:
+
+    push bp
+    mov bp,sp
+    push ax
+    push bx
+    push cx
+
+    ldi bx,keyboard_buffer_pointer  ;Get pointer of next character to echo in queue
+    ldr bx,bx
+
+    ldi ax,keyboard_buffer
+    add ax,bx                       ;Index of character to print
+    inc bx
+    ldi cx,keyboard_buffer_end
+
+    cmp ax,cx                       ;If ax == keyboard_buffer_end
+    jne echo_character_output
+    ldi ax,keyboard_buffer
+    ldi bx,#1
+
+echo_character_output:
+    ldr ax,ax                       ;Get character to print
+    out ax                          ;Print character
+
+    ldi cx,keyboard_buffer_pointer  ;Store pointer
+    str cx,bx
+
+    pop cx
+    pop bx
+    pop ax
+    mov sp,bp
+    pop bp
+    ret
+
+init:
+    xor bp,bp
+    xor sp,sp
+    tei
+
+main_loop:
+    hlt
+    jmp main_loop
