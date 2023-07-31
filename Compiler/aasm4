@@ -129,7 +129,7 @@ registers = {
     "tx":0xF,
 }
 
-parsed_source_code = re.findall(r";.*|\'.*\'|\".*\"|[a-zA-Z_][a-zA-Z0-9_\-]*=[%$#][0-9a-f]+|[a-zA-Z0-9_\-]+:|\.[a-z]{4}|[a-z]{3,5} [abcdefghijktspx]{2},[a-zA-Z0-9_\-#$%]+|[a-z]{2,5} [a-zA-Z0-9_\-]+|[a-z]{2,5}", source_code)
+parsed_source_code = re.findall(r";.*|\'.*\'|\".*\"|[a-zA-Z_][a-zA-Z0-9_\-]*=[%$#][0-9a-f]+|[a-zA-Z0-9_\-]+:|\.[a-z]{4}|[a-z]{3,5} [abcdefghijktspx]{2},[a-zA-Z0-9_\-#$%]+|[a-z]{2,5} [a-zA-Z0-9_\-]+|[a-z]{2,5}|@[0-9a-zA-Z_\-#$%, \n]+@", source_code)
 
 print(parsed_source_code)
 
@@ -191,6 +191,22 @@ for item in parsed_source_code:
         labels.update({item[:-1]:hex(rom_addr)})
         continue
 
+    if item[0] == "@":
+        array = item[1:-1].strip().split(",")
+        for value in array:
+            value = value.strip()
+            if value[0] == "$":
+                value = "0x" + value[1:]
+            elif value[0] == "%":
+                value = hex(int(value[1:],base=2))
+            elif value[0] == "#":
+                value = hex(int(value[1:]))
+            buffer.append(value)
+            rom_addr+=1
+        buffer.append("0x0")
+        rom_addr+=1
+            
+        
     if item[0] == ";":
         continue
     

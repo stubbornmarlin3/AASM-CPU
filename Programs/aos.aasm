@@ -1,10 +1,13 @@
 ;aasm
 
-keyboard_buffer_end_pointer=$8000
-keyboard_buffer_pointer=$8001
-keyboard_buffer=$8002
-keyboard_buffer_end=$8100
+line_index=$8000
+keyboard_buffer_end_pointer=$8001
+keyboard_buffer_pointer=$8002
+keyboard_buffer=$8003
+keyboard_buffer_end=$8023
+command_buffer=$8024
 ESC=$1b
+DEL=$7f
 
 jmp init
 
@@ -12,14 +15,27 @@ terminal_interrupt:      ;Get the character from the terminal and add to buffer
 
     push bp
     mov bp,sp
-
     push ex
     push ix
     push jx
     push kx
 
     in ex
+    ldi jx,ESC
+    cmp ex,jx
+    jne block_null
+    ldi jx,$ff
+block_escape_loop:
+    in ex
+    cmp ex,jx
+    jne block_escape_loop
+    jmp terminal_interrupt_return
 
+block_null:
+    bit ex
+    jz terminal_interrupt_return
+
+terminal_interrupt_cont:
     ldi ix,keyboard_buffer_end_pointer          ;get the end pointer
     ldr ix,ix
 
@@ -38,12 +54,12 @@ store_terminal_input:
     ldi kx,keyboard_buffer_end_pointer
     str kx,ix           ;Store end pointer 
 
+terminal_interrupt_return:
     pop kx
     pop jx
     pop ix
     pop ex
-
-    mov sp
+    mov sp,bp
     pop bp
 
     iret
@@ -81,6 +97,50 @@ terminal_escape_loop:
     pop bp
     ret
 
+clear_screen:
+    push bp
+    mov bp,sp
+    push ax
+
+    ldi ax,CSI_CLEAR_SCREEN
+    push ax
+    call terminal_escape_sequence
+    ldi ax,CSI_CLEAR_SCROLLBACK
+    push ax
+    call terminal_escape_sequence
+    ldi ax,CSI_HOME
+    push ax
+    call terminal_escape_sequence
+    ldi ax,#3
+    add sp,ax
+
+    pop ax
+    mov sp,bp
+    pop bp
+    ret
+
+prompt: "AOS|> "
+
+print_prompt:
+    push bp
+    mov bp,sp
+    push ax
+    push si
+
+    ldi si,prompt
+print_prompt_loop:
+    ldr ax,si
+    inc si
+    bit ax
+    out ax
+    jnz print_prompt_loop
+
+    pop si
+    pop ax
+    mov sp,bp
+    pop bp
+    ret
+
 echo_character:
 
     push bp
@@ -88,13 +148,24 @@ echo_character:
     push ax
     push bx
     push cx
+    push dx
+    push ix
+
+    ldi ix,line_index               ;Get line index
+    ldr ix,ix
 
     ldi bx,keyboard_buffer_pointer  ;Get pointer of next character to echo in queue
     ldr bx,bx
 
+    ldi cx,keyboard_buffer_end_pointer
+    ldr cx,cx
+    cmp cx,bx                       ;If keyboard pointer and end pointer are equal, return
+    jeq echo_character_return       ;Else continue to print character
+
     ldi ax,keyboard_buffer
     add ax,bx                       ;Index of character to print
     inc bx
+
     ldi cx,keyboard_buffer_end
 
     cmp ax,cx                       ;If ax == keyboard_buffer_end
@@ -104,11 +175,63 @@ echo_character:
 
 echo_character_output:
     ldr ax,ax                       ;Get character to print
-    out ax                          ;Print character
 
+backspace_test:
+    ldi cx,DEL
+    cmp ax,cx
+    jne clear_screen_test
+
+    bit ix
+    jz echo_character_return
+
+    ldi ax,'\b'
+    out ax
+    ldi ax,' '
+    out ax
+    ldi ax,'\b'
+    out ax
+    dec ix
+
+    jmp echo_character_return
+
+clear_screen_test:
+    ldi cx,$c
+    cmp ax,cx
+    jne enter_test
+    call clear_screen
+    call print_prompt
+    xor ix,ix
+    jmp echo_character_return
+
+enter_test:
+    ldi cx,'\r'
+    cmp ax,cx
+    jne echo_character_output_cont
+    call excecute_command
+    out ax
+    ldi ax,'\n'
+    out ax
+    call print_prompt
+    xor ix,ix
+    jmp echo_character_return
+
+echo_character_output_cont:
+
+    ldi cx,command_buffer
+    add cx,ix
+    str cx,ax
+
+    out ax                          ;Print character
+    inc ix
+
+echo_character_return:
+    ldi cx,line_index               ;Store index
+    str cx,ix
     ldi cx,keyboard_buffer_pointer  ;Store pointer
     str cx,bx
 
+    pop ix
+    pop dx
     pop cx
     pop bx
     pop ax
@@ -116,11 +239,57 @@ echo_character_output:
     pop bp
     ret
 
+commands_indexed:
+    @
+    neofetch,
+    help
+    @
+
+neofetch: "neofetch"
+help: "help"
+
+
+excecute_command:
+
+    push bp
+    mov bp,sp
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+
+    xor dx,dx                       ;Set dx to 0
+    xor cx,cx                       ;Set cx to 0
+
+    ldi si,command_buffer           ;si = first letter in command buffer
+    ldr si,si
+
+    ldi bx,commands_indexed         ;bx = address of command string to check
+    add bx,cx
+    ldr bx,bx
+
+    ldr di,bx                       ;di = first letter of command string
+compare_commands:
+
+cmp_strings:
+    cmp dx,ix
+    jeq excecute_command_cont       ;jump if dx = line_index else inc dx
+    inc dx
+    cmp si,di
+    jne compare_commands            ;if they are not equal, get next command
+    
+    jne 
+
+excecute_command_cont:
+
+
 init:
-    xor bp,bp
-    xor sp,sp
+    call clear_screen
+    call print_prompt
     tei
 
 main_loop:
-    hlt
+    call echo_character
     jmp main_loop
